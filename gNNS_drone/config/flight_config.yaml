@@ -1,0 +1,123 @@
+# ============================================================
+# gNNS Drone — Flight Controller Gains & Parameters
+# ============================================================
+# TUNED FOR SMOOTH REAL-WORLD FLIGHT
+# Jetson Nano + RTAB-Map VIO + CubeOrange FC
+#
+# TUNING PHILOSOPHY:
+#   - Lower kp = less oscillation from VIO noise
+#   - Higher kd = more damping = smoother motion
+#   - Low accel limits = no sudden jerks
+#   - The PositionFilter in FlightController smooths VIO
+#     noise BEFORE it enters PID (alpha=0.4)
+#
+# TWO PROFILES in this file:
+#   Current values = REAL FLIGHT (smooth, conservative)
+#   Comments show  = SITL values (faster, for simulation testing)
+# ============================================================
+
+# ============================================================
+# Position → Velocity PID Gains
+# ============================================================
+position_gains:
+  # Horizontal (North-East plane)
+  horizontal:
+    kp: 0.6        # Real: 0.6 (smooth)  |  SITL: 1.0 (faster)
+    ki: 0.01       # Real: 0.01 (low to prevent wind-up)
+    kd: 0.25       # Real: 0.25 (high damping!)  |  SITL: 0.15
+    max_integral: 0.5   # Tight clamp — prevents runaway
+
+  # Vertical (altitude hold)
+  vertical:
+    kp: 0.7        # Real: 0.7 (gentle alt corrections)
+    ki: 0.02       # Small steady-state correction
+    kd: 0.3        # Real: 0.3 (heavy damping on altitude)
+    max_integral: 0.3
+
+# ============================================================
+# Velocity Limits (m/s)
+# Start slow, increase after testing!
+# ============================================================
+velocity_limits:
+  cruise_max: 1.2        # Real: 1.2 (safe)  |  SITL: 2.0
+  approach_max: 0.8      # Slower near waypoint
+  landing_horizontal: 0.3  # Very gentle during landing
+  landing_final: 0.15    # Barely moving during final descent
+  ascent_max: 0.8        # Gentle climb
+  descent_max: 0.8       # Gentle descend
+  descent_landing: 0.2   # Slow descent during landing align
+  descent_final: 0.1     # Very slow final touchdown
+
+# ============================================================
+# Acceleration Limits (m/s²)
+# LOW = SMOOTH. This is the #1 anti-wobble setting.
+# ============================================================
+acceleration_limits:
+  horizontal: 1.5        # Real: 1.5 (smooth!)  |  SITL: 3.0
+  vertical: 1.0          # Real: 1.0
+  landing: 0.4           # Very gentle during landing
+
+# ============================================================
+# Waypoint Navigation
+# ============================================================
+waypoint:
+  cruise_altitude: 2.5     # meters above ground
+  arrival_radius: 2.0      # "arrived" when this close (meters)
+  slowdown_radius: 6.0     # start slowing down within this (meters)
+  heading_mode: "auto"
+
+# ============================================================
+# Takeoff Parameters
+# ============================================================
+takeoff:
+  target_altitude: 2.5
+  vertical_speed: 0.5       # Real: 0.5 (gentle takeoff!)  |  SITL: 0.8
+  stabilize_time: 3.0       # More time to stabilize
+  ramp_up_time: 2.0         # Slower ramp = smoother
+  arm_delay: 1.0
+
+# ============================================================
+# Landing Parameters
+# ============================================================
+landing:
+  approach_altitude: 3.0
+  align_start_altitude: 3.0
+  final_start_altitude: 1.0
+  touchdown_altitude: 0.15
+
+  approach_speed: 0.6
+  align_descent_rate: 0.2      # Slow descent while aligning
+  final_descent_rate: 0.1      # Very slow final descent
+
+  align_center_tolerance: 0.5
+  final_center_tolerance: 0.3
+
+  # Landing PID — tighter, more damped
+  align_gains:
+    kp: 0.5          # Lower than cruise (gentle corrections)
+    ki: 0.0
+    kd: 0.3          # High damping near ground
+  final_gains:
+    kp: 0.3          # Very gentle in final phase
+    ki: 0.0
+    kd: 0.4          # Maximum damping near touchdown
+
+  search_timeout: 30.0
+  search_spiral_rate: 0.5
+  search_max_radius: 3.0
+
+  target_lost_align_timeout: 10.0
+  target_lost_final_timeout: 5.0
+
+  max_landing_time: 60.0
+  max_tilt_deg: 15.0
+
+# ============================================================
+# Safety & Geofence
+# ============================================================
+safety:
+  geofence_radius: 50.0       # Tighter for real flight!
+  min_battery_pct: 25.0       # Higher margin
+  max_altitude: 5.0           # Lower ceiling for safety
+  min_odom_confidence: 40     # Higher quality threshold
+  vio_lost_action: "LAND"
